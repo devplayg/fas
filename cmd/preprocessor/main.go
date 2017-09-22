@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mholt/archiver"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,9 +47,20 @@ func main() {
 	log.Info("Starting server..")
 	log.Infof("Target: %s", *watchDir)
 
+	archiver.Zip.Open("C:/dev/src/github.com/devplayg/fas/test/root.zip", "C:/dev/src/github.com/devplayg/fas/extract/")
+	//	archiver.Tar.Open("C:/dev/src/github.com/devplayg/fas/test/root.tar", "C:/dev/src/github.com/devplayg/fas/extract/")
+	//	archiver.TarGz.Open("C:/dev/src/github.com/devplayg/fas/test/root.tar.gz", "C:/dev/src/github.com/devplayg/fas/extract/")
+	//	archiver.Zip.Open("C:/dev/src/github.com/devplayg/fas/test/root.7z", "C:/dev/src/github.com/devplayg/fas/extract/")
+
 }
 
 func printHelp() {
 	fmt.Println("fap [options]")
 	fs.PrintDefaults()
+}
+
+func CheckErr(err error) {
+	if err != nil {
+		log.Error(err.Error())
+	}
 }
