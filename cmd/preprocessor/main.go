@@ -46,19 +46,17 @@ func main() {
 	fs.Parse(os.Args[1:])
 	log.Infof("Starting server. Target dir: %s", *watchDir)
 
+	// Start watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Process events
 	go func() {
 		for {
 			select {
 			case ev := <-watcher.Event:
-				if ev.IsCreate() {
-					log.Info("event:", ev)
-				}
+				log.Error("event:", ev)
 
 			case err := <-watcher.Error:
 				log.Error(err.Error())
@@ -66,7 +64,9 @@ func main() {
 		}
 	}()
 
-	err = watcher.Watch(*watchDir)
+	//	err = watcher.Watch()
+
+	watcher.WatchFlags(*watchDir, fsnotify.FSN_CREATE)
 	if err != nil {
 		log.Fatal(err)
 	}
