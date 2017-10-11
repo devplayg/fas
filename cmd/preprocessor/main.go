@@ -7,12 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/devplayg/fas"
 	"github.com/howeyc/fsnotify"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	DefaultWatchDir = "/fas"
+	DefaultHomeDIr = "/home/fas"
 )
 
 var (
@@ -40,11 +41,11 @@ func main() {
 	// Set flags
 	fs = flag.NewFlagSet("", flag.ExitOnError)
 	var (
-		watchDir = fs.String("d", os.TempDir()+DefaultWatchDir, "Watching directory")
+		homeDir = fs.String("homedir", DefaultHomeDIr, "Home directory")
 	)
 	fs.Usage = printHelp
 	fs.Parse(os.Args[1:])
-	log.Infof("Starting server. Target dir: %s", *watchDir)
+	log.Infof("Starting server. Homedir: %s", *homeDir)
 
 	// Start watcher
 	watcher, err := fsnotify.NewWatcher()
@@ -53,10 +54,15 @@ func main() {
 	}
 
 	go func() {
+		d := engine.NewDispatcher(*homeDir + "/storage")
+
 		for {
 			select {
 			case ev := <-watcher.Event:
-				log.Error("event:", ev)
+				log.Info("event:", ev.Name)
+				d.Enqueue(ev.Name)
+				//				d.
+				//				dispatcher.Enqueue(ev.Name)
 
 			case err := <-watcher.Error:
 				log.Error(err.Error())
@@ -66,7 +72,8 @@ func main() {
 
 	//	err = watcher.Watch()
 
-	watcher.WatchFlags(*watchDir, fsnotify.FSN_CREATE)
+	watcher.WatchFlags(*homeDir+"/watch", fsnotify.FSN_CREATE)
+	watcher.WatchFlags(*homeDir+"/user", fsnotify.FSN_CREATE)
 	if err != nil {
 		log.Fatal(err)
 	}
