@@ -56,7 +56,10 @@ func main() {
 		for {
 			select {
 			case ev := <-watcher.Event:
-				log.Info("event:", ev)
+				if ev.IsCreate() {
+					log.Info("event:", ev)
+				}
+
 			case err := <-watcher.Error:
 				log.Error(err.Error())
 			}
