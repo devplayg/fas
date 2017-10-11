@@ -4,17 +4,18 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/mholt/archiver"
+	"github.com/howeyc/fsnotify"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	DefaultWatchDir = "/tmp/fas"
+	DefaultWatchDir = "/fas"
 )
 
 var (
-	//	stats = expvar.NewMap("server")
 	fs *flag.FlagSet
 )
 
@@ -39,19 +40,37 @@ func main() {
 	// Set flags
 	fs = flag.NewFlagSet("", flag.ExitOnError)
 	var (
-		watchDir = fs.String("d", DefaultWatchDir, "Watching directory")
+		watchDir = fs.String("d", os.TempDir()+DefaultWatchDir, "Watching directory")
 	)
 	fs.Usage = printHelp
 	fs.Parse(os.Args[1:])
+	log.Infof("Starting server. Target dir: %s", *watchDir)
 
-	log.Info("Starting server..")
-	log.Infof("Target: %s", *watchDir)
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	archiver.Zip.Open("C:/dev/src/github.com/devplayg/fas/test/root.zip", "C:/dev/src/github.com/devplayg/fas/extract/")
-	//	archiver.Tar.Open("C:/dev/src/github.com/devplayg/fas/test/root.tar", "C:/dev/src/github.com/devplayg/fas/extract/")
-	//	archiver.TarGz.Open("C:/dev/src/github.com/devplayg/fas/test/root.tar.gz", "C:/dev/src/github.com/devplayg/fas/extract/")
-	//	archiver.Zip.Open("C:/dev/src/github.com/devplayg/fas/test/root.7z", "C:/dev/src/github.com/devplayg/fas/extract/")
+	// Process events
+	go func() {
+		for {
+			select {
+			case ev := <-watcher.Event:
+				log.Info("event:", ev)
+			case err := <-watcher.Error:
+				log.Error(err.Error())
+			}
+		}
+	}()
 
+	err = watcher.Watch(*watchDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Stop
+	waitForSignals()
+	watcher.Close()
 }
 
 func printHelp() {
@@ -59,8 +78,11 @@ func printHelp() {
 	fs.PrintDefaults()
 }
 
-func CheckErr(err error) {
-	if err != nil {
-		log.Error(err.Error())
+func waitForSignals() {
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, os.Interrupt, syscall.SIGTERM)
+	select {
+	case <-signalCh:
+		log.Println("Signal received, shutting down...")
 	}
 }
