@@ -1,29 +1,62 @@
 package engine
 
+import (
+	"os"
+	"time"
+
+	"github.com/satori/go.uuid"
+	log "github.com/sirupsen/logrus"
+)
+
+func Enqueue(filepath string, c <-chan bool) error {
+	//	defer return nil
+	// Get checksum
+
+	// Move file
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		log.Error(err)
+		<-c
+		return err
+	}
+
+	// Issue UUID
+	id := issueId()
+	log.Info(id)
+
+	// Write log
+
+	time.Sleep(2 * time.Second)
+	log.Info("Enqueued: " + filepath)
+	//	<-c
+
+	return nil
+
+}
+
+func issueId() uuid.UUID {
+	return uuid.NewV4()
+}
+
 //func Enqueue() error {
 
 //}
 
-//import (
-//	log "github.com/sirupsen/logrus"
-//)
+//type Dispatcher struct {
+//	storageDir string
+//}
 
-type Dispatcher struct {
-	storageDir string
-}
+//func NewDispatcher(storageDir string) *Dispatcher {
+//	// Insert into DB
+//	return &Dispatcher{
+//		storageDir: storageDir,
+//	}
 
-func NewDispatcher(storageDir string) *Dispatcher {
-	// Insert into DB
-	return &Dispatcher{
-		storageDir: storageDir,
-	}
+//	return nil
+//}
 
-	return nil
-}
-
-func (this *Dispatcher) Enqueue(fp string) error {
-	return nil
-}
+//func (this *Dispatcher) Enqueue(c chan<- bool, fp string) error {
+//	return nil
+//}
 
 //func NewWatcher(datadir string) *Watcher {
 //	return &Watcher{

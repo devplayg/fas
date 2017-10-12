@@ -6,9 +6,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	//	"time"
 
 	"github.com/devplayg/fas"
-	"github.com/howeyc/fsnotify"
+	//	"github.com/howeyc/fsnotify"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,39 +49,41 @@ func main() {
 	log.Infof("Starting server. Homedir: %s", *homeDir)
 
 	// Start watcher
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		log.Fatal(err)
-	}
+	//	watcher, err := fsnotify.NewWatcher()
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
+	c := make(chan bool, 3)
+	go engine.Enqueue("/home/fas/user/1.png", c)
+	go engine.Enqueue("/home/fas/user/2.png", c)
+	go engine.Enqueue("/home/fas/user/3.png", c)
+	go engine.Enqueue("/home/fas/user/4.png", c)
 
-	go func() {
-		d := engine.NewDispatcher(*homeDir + "/storage")
+	//	go func() {
+	//		for {
+	//			select {
+	//			case ev := <-watcher.Event:
+	//				if ev.IsCreate() {
+	//					c <- true
+	//					log.Info("Request enqueuing: ", ev.Name)
+	//					go engine.Enqueue(ev.Name, c)
+	//				}
+	//			case err := <-watcher.Error:
+	//				log.Error(err.Error())
+	//			}
+	//		}
+	//	}()
 
-		for {
-			select {
-			case ev := <-watcher.Event:
-				log.Info("event:", ev.Name)
-				d.Enqueue(ev.Name)
-				//				d.
-				//				dispatcher.Enqueue(ev.Name)
-
-			case err := <-watcher.Error:
-				log.Error(err.Error())
-			}
-		}
-	}()
-
-	//	err = watcher.Watch()
-
-	watcher.WatchFlags(*homeDir+"/watch", fsnotify.FSN_CREATE)
-	watcher.WatchFlags(*homeDir+"/user", fsnotify.FSN_CREATE)
-	if err != nil {
-		log.Fatal(err)
-	}
+	//	// Start watching
+	//	watcher.WatchFlags(*homeDir+"/watch", fsnotify.FSN_CREATE)
+	//	watcher.WatchFlags(*homeDir+"/user", fsnotify.FSN_CREATE)
+	//	if err != nil {
+	//		log.Fatal(err)
+	//	}
 
 	// Stop
 	waitForSignals()
-	watcher.Close()
+	//	watcher.Close()
 }
 
 func printHelp() {
