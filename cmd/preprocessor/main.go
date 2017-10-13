@@ -8,7 +8,7 @@ import (
 	"syscall"
 	//	"time"
 
-	"github.com/devplayg/fas"
+	"github.com/devplayg/fas/preprocessor"
 	//	"github.com/howeyc/fsnotify"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,42 +48,19 @@ func main() {
 	fs.Parse(os.Args[1:])
 	log.Infof("Starting server. Homedir: %s", *homeDir)
 
-	// Start watcher
-	//	watcher, err := fsnotify.NewWatcher()
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
-	c := make(chan bool, 3)
-	go engine.Enqueue("/home/fas/user/1.png", c)
-	go engine.Enqueue("/home/fas/user/2.png", c)
-	go engine.Enqueue("/home/fas/user/3.png", c)
-	go engine.Enqueue("/home/fas/user/4.png", c)
+	// Open logging channel
+	errChan := make(chan error, 1)
+	go logDrain(errChan)
 
-	//	go func() {
-	//		for {
-	//			select {
-	//			case ev := <-watcher.Event:
-	//				if ev.IsCreate() {
-	//					c <- true
-	//					log.Info("Request enqueuing: ", ev.Name)
-	//					go engine.Enqueue(ev.Name, c)
-	//				}
-	//			case err := <-watcher.Error:
-	//				log.Error(err.Error())
-	//			}
-	//		}
-	//	}()
-
-	//	// Start watching
-	//	watcher.WatchFlags(*homeDir+"/watch", fsnotify.FSN_CREATE)
-	//	watcher.WatchFlags(*homeDir+"/user", fsnotify.FSN_CREATE)
-	//	if err != nil {
-	//		log.Fatal(err)
-	//	}
+	// Start preprocessor
+	preprocessor := preprocessor.NewPreprocessor(*homeDir)
+	if err := preprocessor.Start(errChan); err != nil {
+		log.Fatal(err)
+	}
 
 	// Stop
 	waitForSignals()
-	//	watcher.Close()
+	preprocessor.Stop()
 }
 
 func printHelp() {
@@ -97,5 +74,16 @@ func waitForSignals() {
 	select {
 	case <-signalCh:
 		log.Println("Signal received, shutting down...")
+	}
+}
+
+func logDrain(errChan <-chan error) {
+	for {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
 	}
 }
