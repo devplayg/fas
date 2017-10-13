@@ -45,7 +45,7 @@ func (this *Preprocessor) Start(errChan chan<- error) error {
 					this.c <- true
 					log.Debug("Request enqueuing: ", ev.Name)
 					//					go Enqueue(ev.Name, c)
-					go this.enqueue(ev.Name)
+					go this.enqueue(ev.Name, 0)
 				}
 			case err := <-this.w.Error:
 				this.errChan <- err
@@ -63,7 +63,7 @@ func (this *Preprocessor) Stop() error {
 	return nil
 }
 
-func (this *Preprocessor) enqueue(filepath string) error {
+func (this *Preprocessor) enqueue(filepath string, depth int) error { // uuid, p_uuid, g_uuid
 	defer func() {
 		<-this.c
 	}()
@@ -78,12 +78,11 @@ func (this *Preprocessor) enqueue(filepath string) error {
 		this.errChan <- err
 		return err
 	}
-	log.Debug("MD5: " + md5)
+	log.Info("MD5: " + md5)
 
 	// Move file
 	err = os.Rename(filepath, this.homedir+"/storage/"+md5[0:2]+"/"+md5+".bin")
 	if err != nil {
-		log.Error(err.Error())
 		this.errChan <- err
 		return err
 	}
@@ -92,9 +91,19 @@ func (this *Preprocessor) enqueue(filepath string) error {
 	uuid := uuid.NewV4()
 	log.Debug(uuid)
 
+	// Get type
+
+	// Get size
+
+	// Is archive?
+
+	//
+
+	//
+
 	// Write log
 	//	time.Sleep(2 * time.Second)
-	log.Debug("Enqueued: " + filepath)
+	//	log.Debug("Enqueued: " + filepath)
 	return nil
 }
 
