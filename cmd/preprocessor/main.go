@@ -48,6 +48,8 @@ func main() {
 	fs.Parse(os.Args[1:])
 	log.Infof("Starting server. Homedir: %s", *homeDir)
 
+	// Check directories
+
 	// Open logging channel
 	errChan := make(chan error, 1)
 	go logDrain(errChan)

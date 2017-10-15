@@ -2,12 +2,13 @@ package preprocessor
 
 import (
 	"os"
-	"strconv"
+	//	"strconv"
+	//"path/filepath"
 	"time"
 
 	"github.com/devplayg/golibs/checksum"
-	"github.com/devplayg/golibs/strings"
-	"github.com/howeyc/fsnotify"
+	//	"github.com/devplayg/golibs/strings"
+	"github.com/fsnotify/fsnotify"
 	"github.com/satori/go.uuid"
 	log "github.com/sirupsen/logrus"
 )
@@ -28,10 +29,39 @@ func NewPreprocessor(homedir string) *Preprocessor {
 
 func (this *Preprocessor) Start(errChan chan<- error) error {
 
+	//	this.errChan = errChan
+	//	this.init()
+	//	var err error
+	//	this.w, err = fsnotify.NewWatcher()
+	//	if err != nil {
+	//		this.errChan <- err
+	//		return err
+	//	}
+	//	go func() {
+	//		for {
+	//			select {
+	//			case ev := <-this.w.Event:
+	//				if ev.IsCreate() {
+	//					this.c <- true
+	//                    ev.
+	//					//					log.Infof("Event: %s", ev)
+	//					//					go Enqueue(ev.Name, c)
+	//					//					log.Debug(ev.Name)
+	//					go this.enqueue(ev.Name, 0)
+	//				}
+	//			case err := <-this.w.Error:
+	//				this.errChan <- err
+	//			}
+	//		}
+	//	}()
+	//	this.w.WatchFlags(this.homedir+"/watch", fsnotify.FSN_CREATE)
+	//	this.w.WatchFlags(this.homedir+"/user", fsnotify.FSN_CREATE)
+
 	this.errChan = errChan
 	this.init()
 	var err error
-	this.w, err = fsnotify.NewWatcher()
+
+	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		this.errChan <- err
 		return err
@@ -40,20 +70,31 @@ func (this *Preprocessor) Start(errChan chan<- error) error {
 	go func() {
 		for {
 			select {
-			case ev := <-this.w.Event:
-				if ev.IsCreate() {
+			case event := <-watcher.Events:
+
+				//log.Println("event:", event)
+				//this.enqueue(event.Name, 0)
+				if event.Op == fsnotify.Create {
 					this.c <- true
-					log.Debug("Request enqueuing: ", ev.Name)
-					//					go Enqueue(ev.Name, c)
-					go this.enqueue(ev.Name, 0)
+					this.enqueue(event.Name, 0)
 				}
-			case err := <-this.w.Error:
+
+				//				if event.Op&fsnotify.Write == fsnotify.Write {
+				//					log.Println("modified file:", event.Name)
+				//				}
+			case err := <-watcher.Errors:
+				//				log.Println("event:###")
 				this.errChan <- err
 			}
 		}
 	}()
-	this.w.WatchFlags(this.homedir+"/watch", fsnotify.FSN_CREATE)
-	this.w.WatchFlags(this.homedir+"/user", fsnotify.FSN_CREATE)
+	err = watcher.Add(this.homedir + "/watch")
+	err = watcher.Add(this.homedir + "/user")
+
+	if err != nil {
+		this.errChan <- err
+		return err
+	}
 
 	return nil
 }
@@ -67,21 +108,33 @@ func (this *Preprocessor) enqueue(filepath string, depth int) error { // uuid, p
 	defer func() {
 		<-this.c
 	}()
-
 	var err error
 
+	time.Sleep(100 * time.Millisecond)
+
+	// check lock
+	file, err := os.Open(filepath)
+	file.Close()
+	if err != nil {
+		log.Infof("Waiting until file is unlocked: %s", filepath)
+		time.Sleep(15000 * time.Millisecond)
+	}
+
 	// Get checksum
-	time.Sleep(10 * time.Millisecond)
+	t1 := time.Now()
+	log.Debugf("Calculating checksum: %s", filepath)
 	md5, err := checksum.GetMd5File(filepath)
 	if err != nil {
-		log.Error(err.Error())
 		this.errChan <- err
 		return err
 	}
-	log.Info("MD5: " + md5)
-
+	log.Infof("Checksum=%s, exectime=%s", md5, time.Since(t1))
+	//filepath.
+	//filepath.
 	// Move file
-	err = os.Rename(filepath, this.homedir+"/storage/"+md5[0:2]+"/"+md5+".bin")
+	//err = os.Rename(filepath, this.homedir+"/storage/"+md5[0:2]+"/"+md5+".bin")
+	//filepath.
+	err = os.Rename(filepath, this.homedir+"/storage/"+md5+".bin")
 	if err != nil {
 		this.errChan <- err
 		return err
@@ -108,17 +161,17 @@ func (this *Preprocessor) enqueue(filepath string, depth int) error { // uuid, p
 }
 
 func (this *Preprocessor) init() {
-	for i := 0x00; i <= 0xff; i++ {
-		str := strconv.FormatInt(int64(i), 16)
-		str = strings.StrPadLeft(str, 2, "0")
-		dir := this.homedir + "/storage/" + str
-		//		log.Info(dir)
-		if _, err := os.Stat(dir); os.IsNotExist(err) {
-			e := os.Mkdir(dir, 0755)
-			if e != nil {
-				this.errChan <- err
-			}
-		}
+	//	for i := 0x00; i <= 0xff; i++ {
+	//		str := strconv.FormatInt(int64(i), 16)
+	//		str = strings.StrPadLeft(str, 2, "0")
+	//		dir := this.homedir + "/storage/" + str
+	//		//		log.Info(dir)
+	//		if _, err := os.Stat(dir); os.IsNotExist(err) {
+	//			e := os.Mkdir(dir, 0755)
+	//			if e != nil {
+	//				this.errChan <- err
+	//			}
+	//		}
 
-	}
+	//	}
 }
