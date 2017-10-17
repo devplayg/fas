@@ -1,12 +1,19 @@
 package preprocessor
 
 import (
+	"encoding/hex"
+	"errors"
 	"os"
+	"path/filepath"
+
+	"gopkg.in/h2non/filetype.v1"
 	//	"strconv"
 	//"path/filepath"
+	"crypto/md5"
+	"io/ioutil"
 	"time"
 
-	"github.com/devplayg/golibs/checksum"
+	//	"github.com/devplayg/golibs/checksum"
 	//	"github.com/devplayg/golibs/strings"
 	"github.com/fsnotify/fsnotify"
 	"github.com/satori/go.uuid"
@@ -71,14 +78,11 @@ func (this *Preprocessor) Start(errChan chan<- error) error {
 		for {
 			select {
 			case event := <-watcher.Events:
-
-				//log.Println("event:", event)
-				//this.enqueue(event.Name, 0)
 				if event.Op == fsnotify.Create {
+
 					this.c <- true
 					this.enqueue(event.Name, 0)
 				}
-
 				//				if event.Op&fsnotify.Write == fsnotify.Write {
 				//					log.Println("modified file:", event.Name)
 				//				}
@@ -104,37 +108,52 @@ func (this *Preprocessor) Stop() error {
 	return nil
 }
 
-func (this *Preprocessor) enqueue(filepath string, depth int) error { // uuid, p_uuid, g_uuid
+func (this *Preprocessor) enqueue(name string, depth int) error { // uuid, p_uuid, g_uuid
 	defer func() {
 		<-this.c
 	}()
-	var err error
 
+	// Sleep
 	time.Sleep(100 * time.Millisecond)
 
-	// check lock
-	file, err := os.Open(filepath)
-	file.Close()
+	// Read file
+	data, err := ioutil.ReadFile(name)
 	if err != nil {
-		log.Infof("Waiting until file is unlocked: %s", filepath)
-		time.Sleep(15000 * time.Millisecond)
+		log.Info("###x")
+		this.errChan <- err
+		count := 1
+		for err != nil && count <= 15 {
+			time.Sleep(1 * time.Second)
+			data, err = ioutil.ReadFile(name)
+			if err != nil {
+				this.errChan <- err
+			}
+			count++
+		}
+
+		if err != nil {
+			this.errChan <- errors.New("Failed to read file: " + name)
+			return err
+		}
 	}
 
-	// Get checksum
-	t1 := time.Now()
-	log.Debugf("Calculating checksum: %s", filepath)
-	md5, err := checksum.GetMd5File(filepath)
-	if err != nil {
+	// Get MD5 checksum
+	b := md5.Sum(data)
+	md5 := hex.EncodeToString(b[:16])
+	log.Debugf("Checksum=%s", md5)
+
+	// Filetype
+	filetype, err2 := filetype.Match(data)
+	if err2 != nil {
 		this.errChan <- err
-		return err
+		return nil
 	}
-	log.Infof("Checksum=%s, exectime=%s", md5, time.Since(t1))
-	//filepath.
-	//filepath.
+	log.Infof("File type: %s. MIME: %s\n", filetype.Extension, filetype.MIME.Value)
+
 	// Move file
-	//err = os.Rename(filepath, this.homedir+"/storage/"+md5[0:2]+"/"+md5+".bin")
-	//filepath.
-	err = os.Rename(filepath, this.homedir+"/storage/"+md5+".bin")
+	//	err = os.Rename(name, filepath.Join(this.homedir, "/storage", md5[0:2] ,md5+".bin"))
+	err = os.Rename(name, filepath.Join(this.homedir, "/storage", md5+".bin"))
+
 	if err != nil {
 		this.errChan <- err
 		return err
